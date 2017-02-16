@@ -1,4 +1,4 @@
-#include <bits/stdc++.h>
+#include<bits/stdc++.h>
 using namespace std;
 
 #define pb push_back()
@@ -9,126 +9,197 @@ using namespace std;
 #define f first 
 #define s second
 
-
-struct seg
-{
+struct seg{
     int l, h;
 };
-struct node
-{
-    seg s; 
+
+struct interval{
+    seg *s;
     int max;
-    node *left, *right;
+    interval *left, *right, *parent;
 };
-node *create(seg s)
-{
-    node *curr = new node;
-    curr->s = s;
-    curr->max = s.h;
-    curr->left = curr->right = NULL;
-}
-node *mininterval(node* n)
-{
-    node* curr = n;
-    while (curr->left != NULL)
-        curr = curr->left;
- 
-    return curr;
-}
-bool checkoverlap(seg s1, seg s2)
-{
-    if (s1.l<= s2.h && s2.l <= s1.h)
-    return true;
-    else    
-    return false;
-}
-node *insertinterval(node *root, seg s)
-{
-    if (root == NULL)
-        return create(s);
-    int l = root->s.l;
-    if (s.l < l)
-        root->left = insertinterval(root->left, s);
-    else
-        root->right = insertinterval(root->right, s);
-    if (root->max < s.h)
-        root->max = s.h;
- 
-    return root;
-}
-node *deleteinterval(node *root, seg k)
-{
-    
-    if (root == NULL) return root;
-    if (k.l< root->s.l)
-        root->left = deleteinterval(root->left, k);
-    else if (k.l > root->s.l)
-        root->right = deleteinterval(root->right, k);
-    else
-    {
-    	
-        if (root->left == NULL)
-        {
-            node *curr = root->right;
-            free(root);
-            return curr;
-        }
-        else if (root->right == NULL)
-        {
-            node *curr = root->left;
-            free(root);
-            return curr;
-        }
-        node *curr = mininterval(root->right);
-        root->s = curr->s;
- 
-        root->right = deleteinterval(root->right, curr->s);
-    }
-    return root;
+
+seg *newseg(int l, int h){
+    seg *s = new seg();
+    s->l = l;
+    s->h = h;
+    return s;
 }
 
-seg search(node *root, seg s)
-{
-    seg temp;
-    temp.l=temp.h=-9999;
-    if (root == NULL) return temp;
-    if (checkoverlap((root->s), s))
-        return root->s;
-    if (root->left != NULL && root->left->max >= s.l)
-        return search(root->left, s);
-    else    
-    return search(root->right, s);
-}
-int main()
-{
-    
-    int cnt;
-    cout<<"enter number of intervals you want to enter"<<endl;
-    cin>>cnt;
-    cout<<"enter the intervals"<<endl;;
-    seg s;
-    node *root = NULL;
-    for (int i = 0; i < cnt; i++)
-    {
-    	cin>>s.l>>s.h;
-        root = insertinterval(root, s);
+class Tree{
+private :
+    interval *root;
+
+public:
+    Tree(seg *s){
+        root = new interval();
+        root->s = s;
+        root->max = max(s->l, s->h);
+        root->left = NULL;
+        root->right = NULL;
+        root->parent = NULL;
     }
-    cout<<"enter the interval to search for overlap"<<endl;
-    cin>>s.l>>s.h;
-       seg result =search(root, s);
-    if (result.l == -9999 && result.h==-9999)
-        cout << "Not found overlap"<<endl;
-    else
-        cout << "Overlaps with interval "<< result.l << ", " << result.h <<endl;
-     cout<<"enter the interval you want to delete"<<endl;
-	 cin>>s.l>>s.h;   
-	 root=deleteinterval(root,s);
-	 cout<<"enter the interval to search after deletion"<<endl;
-    cin>>s.l>>s.h;
-       result = search(root, s);
-    if (result.l == -9999 && result.h==-9999)
-        cout << "Not found overlap"<<endl;
-    else
-        cout << "Overlaps with interval " << result.l << ", " << result.h <<endl;
+    
+    interval* createnode(seg *s){
+        interval *node = new interval();
+        node->s = s;
+        node->max = max(s->l, s->h);
+        node->left = NULL;
+        node->right = NULL;
+        return node;
+    }
+
+    void insert(seg *s){
+        interval *current = createnode(s);
+        insertinterval(root, current);
+    }
+
+    void insertinterval(interval *root, interval *current){
+        if (!this->root){
+            this->root = current;
+            this->root->parent = NULL;
+        }else{
+            root->max = max(root->max, current->max);   
+            if (current->s->l < root->s->l){
+            
+                if (!root->left){
+                    root->left = current;
+                    current->parent = root;
+                }else{
+                    insertinterval(root->left, current);
+                }
+            }else{
+                if(!root->right){
+                    root->right = current;
+                    current->parent = root;
+                }else{
+                    insertinterval(root->right, current);
+                }
+            }
+        }
+    }
+
+    bool find(seg *s1, seg *s2){
+        if (s1->l == s2->l && s1->h == s2->h)
+            return true;
+        else    
+            return false;
+    }
+
+
+
+    bool isLeftChild(interval *t){
+        if (t->parent->left == t)
+            return true;
+        else        
+            return false;
+    }
+    
+    void deletenode(seg *s){
+        deletenode(root, s);
+    }
+    void deletenode(interval *root, seg *s){
+        if(!root){
+            cout<<"No such interval exists"<<endl;
+            return;
+        }
+
+        if (find(root->s, s)){
+            
+            if (root->right){
+                interval *rep = root;
+                interval *temp = root->right;
+                while(temp){
+                    rep = temp;
+                    temp = temp->left;
+                }
+                if (isLeftChild(rep)){
+                    rep->parent->left = rep->right;
+                    if (rep->right) rep->right->parent = rep->parent;
+                }else{
+                    rep->parent->right = rep->right;
+                    if (rep->right) rep->right->parent = rep->parent;
+                } 
+            
+                temp = rep->parent;
+                while(temp!=root){
+                    if (temp->left) temp->max = root->left->max;
+                    if (temp->right) temp->max = max(root->max, root->right->max);
+                    temp = temp->parent;
+                }
+            
+                root->s = rep->s;
+                root->max = rep->max;
+                if (root->left) root->max = max(root->max, root->left->max);
+                if (root->right) root->max = max(root->max, root->right->max);
+            }else{
+                if (isLeftChild(root)){
+                    root->parent->left = root->left;
+                    if (root->left) root->left->parent = root->parent;
+                }else{
+                    root->parent->right = root->left;
+                    if (root->left) root->left->parent = root->parent;
+                } 
+            }
+
+            interval *temp = root->parent;
+            while(temp != NULL){
+                temp->max = temp->s->h;
+                if (temp->left) temp->max = max(temp->left->max, temp->max);
+                if (temp->right) temp->max = max(temp->right->max, temp->max);
+                temp = temp->parent;
+            }
+
+        }else{
+            if (s->l < root->s->l)
+                deletenode(root->left, s);
+            else deletenode(root->right, s);
+        }
+
+    }
+
+    bool doOverlap(seg *s1, seg *s2){
+        if (s1->h < s2->l || s1->l > s2->h)
+            return false;
+        else        
+            return true;
+    }
+        seg* searchOverlap(seg *i){
+        return searchOverlap(root, i);
+    }
+   
+
+    seg* searchOverlap(interval *root, seg *s){
+        if (!root)
+            return NULL;
+
+        if (doOverlap(root->s, s))
+            return root->s;
+
+        if (root->left && s->l <= root->left->max)
+            return searchOverlap(root->left, s);
+        else return searchOverlap(root->right, s);
+    }
+};
+int main(){
+    Tree IT(newseg(15,20));
+    seg ints[] = {{15,20}, {10, 30}, {17, 19},
+        {5, 20}, {12, 15}, {16, 40}
+    };
+    
+    
+    for (int i = 0; i < 6; i++)
+        IT.insert(newseg(ints[i].l, ints[i].h));
+
+    seg *match = IT.searchOverlap(newseg(14, 19));
+    if(match)
+        cout<<"Overlaps with ("<<match->l<<","<<match->h<<")"<<endl;
+    else cout<<"No Overlap";
+
+    match = IT.searchOverlap(newseg(21, 23));
+    if(match)
+        cout<<"Overlaps with ("<<match->l<<","<<match->h<<")"<<endl;
+    else cout<<"No Overlap";    
+
     return 0;
 }
